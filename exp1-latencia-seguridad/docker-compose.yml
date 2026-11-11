@@ -1,0 +1,191 @@
+# Experimento 1 · Latencia del guardado con seguridad en el camino crítico (REND-01 · SEG-01)
+# Uso:  docker compose up -d --build                    (arquitectura propuesta)
+#       docker compose --profile pipeline run --rm pipeline-politicas   (valida la política)
+#       docker compose --profile observabilidad up -d          (Prometheus y Grafana, opcional)
+
+x-servicio-python: &servicio-python
+  build: ./servicios
+  image: exp1-servicios:latest
+  restart: unless-stopped
+  volumes:
+    - ./claves/jwt_pub.pem:/claves/jwt_pub.pem:ro
+
+services:
+  # ---------- Z1 · Borde y seguridad ----------
+  balanceador:
+    image: haproxy:2.8
+    restart: unless-stopped
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./certs/tls.pem:/usr/local/etc/haproxy/certs/tls.pem:ro
+    ports:
+      - "8443:8443"          # entrada pública (HTTPS)
+    depends_on: [gateway]
+
+  gateway:
+    <<: *servicio-python
+    # 2 workers de uvicorn: reparten la validación del JWT y la llamada al PDP entre 2 núcleos.
+    command: sh -c "rm -rf /tmp/prom && mkdir -p /tmp/prom && exec uvicorn gateway.app:app --host 0.0.0.0 --port 8000 --workers ${GATEWAY_WORKERS:-2} --no-access-log"
+    environment:
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom
+      PDP_URL: http://localhost:8181/v1/data/evaluaciones/authz/allow
+      RESPUESTAS_URL: http://balanceador:8090
+      AMQP_URL: amqp://guest:guest@broker/
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 768M }
+
+  # Servicio de Decisiones (PDP · OPA local): sidecar del gateway; comparte su red y
+  # responde en localhost:8181. Lee la política del Repositorio (carpeta opa/politicas).
+  opa-sidecar:
+    image: openpolicyagent/opa:0.70.0
+    restart: unless-stopped
+    network_mode: "service:gateway"
+    command: ["run", "--server", "--disable-telemetry", "--addr=0.0.0.0:8181", "--log-level=error", "/politicas"]
+    volumes:
+      - ./opa/politicas:/politicas:ro
+    depends_on: [gateway]
+
+  # Pipeline de políticas: valida la política del Repositorio (opa test compila y prueba).
+  # Si pasa, se publica al Servicio de Decisiones reiniciando el sidecar.
+  pipeline-politicas:
+    image: openpolicyagent/opa:0.70.0
+    profiles: ["pipeline"]
+    command: ["test", "-v", "/politicas"]
+    volumes:
+      - ./opa/politicas:/politicas:ro
+
+  idp:
+    <<: *servicio-python
+    command: uvicorn idp.app:app --host 0.0.0.0 --port 8003 --no-access-log
+    volumes:
+      - ./claves:/claves:ro
+
+  # ---------- Z2 · Presentación y entrega ----------
+  respuestas:
+    <<: *servicio-python
+    command: uvicorn respuestas.app:app --host 0.0.0.0 --port 8081 --no-access-log
+    environment:
+      REDIS_URL: redis://redis-primario:6379
+      REDIS_REPLICAS_MIN: "1"
+      REDIS_ESPERA_REPLICA_MS: "100"
+      DB_URL: postgresql://app_eval:app_eval@postgres/evaluaciones
+      AMQP_URL: amqp://guest:guest@broker/
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis-primario: { condition: service_healthy }
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+
+  persistidor:
+    <<: *servicio-python
+    command: python -m persistidor.main
+    environment:
+      REDIS_URL: redis://redis-primario:6379
+      DB_URL: postgresql://app_eval:app_eval@postgres/evaluaciones
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis-primario: { condition: service_healthy }
+
+  # ---------- Middleware y estado ----------
+  redis-primario:
+    image: redis:7.2
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
+
+  redis-replica:
+    image: redis:7.2
+    restart: unless-stopped
+    command: ["redis-server", "--replicaof", "redis-primario", "6379"]
+    depends_on:
+      redis-primario: { condition: service_healthy }
+
+  broker:
+    image: rabbitmq:3.13-management
+    restart: unless-stopped
+    ports:
+      - "15672:15672"        # consola: guest / guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 20
+
+  logs-seguridad:
+    <<: *servicio-python
+    command: python -m logs_seguridad.main
+    environment:
+      AMQP_URL: amqp://guest:guest@broker/
+      DB_URL: postgresql://app_logs:app_logs@postgres/evaluaciones
+    depends_on:
+      postgres: { condition: service_healthy }
+      broker: { condition: service_healthy }
+
+  # ---------- Zona lógica · datos ----------
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: evaluaciones
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d evaluaciones"]
+      interval: 3s
+      retries: 20
+
+  # ---------- Observabilidad (opcional: --profile observabilidad) ----------
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    profiles: ["observabilidad"]
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    profiles: ["observabilidad"]
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus]
+
+  # ---------- Herramientas de prueba (se usan con "docker compose run") ----------
+  herramientas:
+    build: ./herramientas
+    image: exp1-herramientas:latest
+    profiles: ["herramientas"]
+    working_dir: /trabajo
+    volumes:
+      - ./:/trabajo
+    environment:
+      DB_ADMIN_URL: postgresql://postgres:postgres@postgres/evaluaciones
+      DB_APP_URL: postgresql://app_eval:app_eval@postgres/evaluaciones
+      REDIS_URL: redis://redis-primario:6379
+      GATEWAY_URL: https://balanceador:8443
+      RESPUESTAS_DIRECTO_URL: http://respuestas:8081
+
+  k6:
+    image: grafana/k6:0.52.0
+    profiles: ["pruebas"]
+    user: "0:0"
+    working_dir: /trabajo
+    volumes:
+      - ./:/trabajo
+    environment:
+      BASE: https://balanceador:8443

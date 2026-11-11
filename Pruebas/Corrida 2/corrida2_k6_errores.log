@@ -1,0 +1,4 @@
+ Container exp1-k6-corrida2 Creating 
+ Container exp1-k6-corrida2 Created 
+time="2026-11-10T16:29:28Z" level=warning msg="Request Failed" error="Put \"https://balanceador:8443/api/instituciones/inst-b/estudiantes/est-b-0322/intentos/a8faa5e5-c835-4f6c-94b0-c6ae72ec923b/respuestas/q22\": write tcp 172.19.0.15:32806->172.19.0.7:8443: write: broken pipe"
+time="2026-11-10T16:34:17Z" level=warning msg="Request Failed" error="Put \"https://balanceador:8443/api/instituciones/inst-b/estudiantes/est-b-0208/intentos/5a3ba9a0-b510-469e-9b22-f68d544eeab5/respuestas/q51\": write tcp 172.19.0.15:46792->172.19.0.7:8443: write: broken pipe"

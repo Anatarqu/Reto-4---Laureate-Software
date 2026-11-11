@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: gateway
+    static_configs:
+      - targets: ["gateway:8000"]
+
+  # OPA sidecar: comparte la red del gateway, así que responde en gateway:8181.
+  - job_name: opa-sidecar
+    static_configs:
+      - targets: ["gateway:8181"]
+
+  # Todas las réplicas de Respuestas (el DNS de Docker devuelve una IP por réplica).
+  - job_name: respuestas
+    dns_sd_configs:
+      - names: ["respuestas"]
+        type: A
+        port: 8081
+
+  - job_name: persistidor
+    static_configs:
+      - targets: ["persistidor:8002"]
+
+  - job_name: haproxy
+    static_configs:
+      - targets: ["balanceador:8405"]

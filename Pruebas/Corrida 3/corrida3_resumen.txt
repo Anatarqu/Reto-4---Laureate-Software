@@ -1,0 +1,26 @@
+Esperando a que el Persistidor drene el stream...
+
+=== REND-01 · respuestas perdidas ===
+  confirmadas por k6 : 61934
+  filas en la BD     : 61934
+  perdidas           : 0   (meta: 0)
+  errores HTTP vistos por k6 : 1   reintentos del portal: 0
+
+=== SEG-01 · ataques bloqueados y registrados ===
+  ataques intentados          : 120
+  ataques bloqueados          : 120   (100.0 %, meta: 100 %)
+  ataques registrados en logs : 120   (100.0 %, meta: 100 %)
+  controles correctos         : 2 de 2
+    politica_abac                    40
+    ruta_no_coincide_con_token       20
+    sin_token                        20
+    token_vencido                    20
+    firma_invalida                   20
+
+=== Resumen de la corrida (para la tabla de resultados) ===
+  REND-01  p95 del guardado              15 ms   meta <= 400 ms  CUMPLE
+  REND-01  p99 del guardado              23 ms   meta <= 600 ms  CUMPLE
+  REND-01  Respuestas perdidas               0   meta 0          CUMPLE
+  SEG-01   Ataques bloqueados          100.0 %   meta 100 %      CUMPLE
+  SEG-01   p95 de autorización         2.91 ms   meta <= 5 ms    CUMPLE
+  SEG-01   Ataques registrados         100.0 %   meta 100 %      CUMPLE

@@ -1,0 +1,396 @@
+{
+  "uid": "exp1",
+  "title": "Experimento 1 · Latencia y seguridad",
+  "schemaVersion": 39,
+  "version": 2,
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "5s",
+  "tags": [
+    "experimento-1"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Guardado en el gateway (ms) · REND-01",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 400
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(gateway_request_seconds_bucket{resultado=\"ok\"}[$__rate_interval])) by (le)) * 1000",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum(rate(gateway_request_seconds_bucket{resultado=\"ok\"}[$__rate_interval])) by (le)) * 1000",
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        }
+      ],
+      "interval": "5s",
+      "maxDataPoints": 500
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Decisión de autorización (ms) · SEG-01",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(authz_decision_seconds_bucket[$__rate_interval])) by (le)) * 1000",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum(rate(authz_decision_seconds_bucket[$__rate_interval])) by (le)) * 1000",
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        }
+      ],
+      "interval": "5s",
+      "maxDataPoints": 500
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Guardado dentro de Respuestas (ms)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(guardado_seconds_bucket{resultado=\"ok\"}[$__rate_interval])) by (le)) * 1000",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(espera_replica_seconds_bucket[$__rate_interval])) by (le)) * 1000",
+          "legendFormat": "p95 espera réplica",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        }
+      ],
+      "interval": "5s",
+      "maxDataPoints": 500
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Guardados confirmados por segundo",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(guardado_seconds_count{resultado=\"ok\"}[$__rate_interval]))",
+          "legendFormat": "guardados/s",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        }
+      ],
+      "interval": "5s",
+      "maxDataPoints": 500
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Accesos denegados por motivo",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (servicio, motivo) (rate(accesos_denegados_total[$__rate_interval]))",
+          "legendFormat": "{{servicio}} · {{motivo}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        }
+      ],
+      "interval": "5s",
+      "maxDataPoints": 500
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Rezago del Persistidor (mensajes)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(persistidor_rezago)",
+          "legendFormat": "sin leer",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        },
+        {
+          "refId": "B",
+          "expr": "sum(persistidor_pendientes)",
+          "legendFormat": "sin confirmar",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          },
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "interval": ""
+        }
+      ],
+      "interval": "5s",
+      "maxDataPoints": 500
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+apiVersion: 1
+# Borra la fuente anterior (si quedó guardada en Grafana) y la vuelve a crear con esta configuración.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+datasources:
+  - name: Prometheus
+    uid: prom
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 5s            # igual al scrape_interval de prometheus.yml
+      prometheusType: Prometheus
+      prometheusVersion: 2.53.0
